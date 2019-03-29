@@ -1,0 +1,12 @@
+<!--
+ * @category Scandiweb
+ * @package ScandiPWA\Migrations
+ * @author Vladimirs Mihnovics <info@scandiweb.com / vladimirs.mihnovics@scandiweb.com>
+ * @copyright Copyright (c) 2019 Scandiweb, Ltd (http://scandiweb.com)
+ * @license Apache-2.0
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
+    <module name="ScandiPWA_Migrations" setup_version="0.0.1" >
+    </module>
+</config>

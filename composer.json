@@ -1,0 +1,37 @@
+{
+    "name": "scandipwa/migrations",
+    "type": "magento2-theme",
+    "description": "ScandiPWA migrations module",
+    "version": "0.0.1",
+    "keywords": [
+        "magento2",
+        "theme",
+        "migrations",
+        "scandipwa",
+        "pwa"
+    ],
+    "license": [
+        "OSL-3.0"
+    ],
+    "support": {
+        "source": "https://github.com/scandipwa/migrations",
+        "email": "info@scandiweb.com"
+    },
+    "authors": [
+        {
+            "name": "Vladimirs Mihnovics",
+            "email": "vladimirs.mihnovics@scandiweb.com"
+        }
+    ],
+    "require": {
+        "magento/product-community-edition": "^2.3"
+    },
+    "autoload": {
+        "files": [
+            "src/registration.php"
+        ],
+        "psr-4": {
+            "ScandiPWA\\Migrations\\": "src"
+        }
+    }
+}
