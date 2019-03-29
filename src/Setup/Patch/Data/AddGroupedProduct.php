@@ -34,7 +34,9 @@ class AddGroupedProduct
         \Magento\Catalog\Api\Data\ProductInterfaceFactory $productFactory,
         \Magento\Catalog\Api\ProductRepositoryInterface $productRepository,
         \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry,
-        \Magento\Catalog\Model\Product\Copier $copier
+        \Magento\Catalog\Model\Product\Copier $copier,
+        \Magento\Framework\Filesystem $filesystem,
+        \Magento\Framework\Filesystem\DirectoryList $directoryList
 
     ) {
         $this->moduleDataSetup = $moduleDataSetup;
@@ -43,6 +45,7 @@ class AddGroupedProduct
         $this->productRepository = $productRepository;
         $this->stockRegistry = $stockRegistry;
         $this->productCopier = $copier;
+        $this->mediaDirectory = $filesystem->getDirectoryWrite($directoryList::MEDIA);
     }
 
     /**
@@ -55,29 +58,36 @@ class AddGroupedProduct
 
         try {
             // load product by id
-            $productOld = $linkedProduct = $this->productRepository->getById(2065);
+            $productOld = $linkedProduct = $this->productRepository->getById(1699);
 
-            //duplicate product
-            $product = $this->productCopier->copy($productOld);
+            if($productOld) {
+                //duplicate product
+                $product = $this->productCopier->copy($productOld);
 
-            //set product props
-            $product->setSku('branded-casual-set');
-            $product->setName('Branded Casual Set');
-            $product->setTypeId('grouped');
-            $product->setVisibility(4);
-            $product->setPrice(1);
-            $product->setAttributeSetId(9);
-            $product->setStatus(\Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED);
+                //set product props
+                $product->setSku('branded-casual-set');
+                $product->setUrlKey('branded-casual-set');
+                $product->setName('Branded Casual Set');
+                $product->setTypeId('grouped');
+                $product->setVisibility(4);
+                $product->setPrice(1);
+                $product->setAttributeSetId(9);
+                $product->setStatus(\Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED);
 
-            //Add children
-            $product = $this->addChildrenProducts($product);
-            $product->save();
+                //Add children
+                $product = $this->addChildrenProducts($product);
+                $product->save();
 
-            //Add stock
-            $stockItem = $this->stockRegistry->getStockItemBySku($product->getSku());
-            $stockItem->setIsInStock(true);
-            $stockItem->setQty(100);
-            $this->stockRegistry->updateStockItemBySku($product->getSku(), $stockItem);
+                //Copy images
+                $this->copyMedia($productOld);
+
+                //Add stock
+                $stockItem = $this->stockRegistry->getStockItemBySku($product->getSku());
+                $stockItem->setIsInStock(true);
+                $stockItem->setQty(100);
+                $this->stockRegistry->updateStockItemBySku($product->getSku(), $stockItem);
+            }
+
         } catch (Exception $e) {
             echo 'Caught exception: ',  $e->getMessage(), "\n";
         }
@@ -89,27 +99,77 @@ class AddGroupedProduct
         $childrenIds = array(1645, 1945, 1901);
         $associated = array();
         $position = 0;
+
         foreach($childrenIds as $productId){
             $position++;
             $linkedProduct = $this->productRepository->getById($productId);
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance(); // instance of object manager
 
-            /** @var \Magento\Catalog\Api\Data\ProductLinkInterface $productLink */
-            $productLink = $objectManager->create(\Magento\Catalog\Api\Data\ProductLinkInterface::class);
+            if($linkedProduct) {
+                $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 
-            $productLink->setSku($product->getSku())
-                ->setLinkType('associated')
-                ->setLinkedProductSku($linkedProduct->getSku())
-                ->setLinkedProductType($linkedProduct->getTypeId())
-                ->setPosition($position)
-                ->getExtensionAttributes()
-                ->setQty(100);
+                /** @var \Magento\Catalog\Api\Data\ProductLinkInterface $productLink */
+                $productLink = $objectManager->create(\Magento\Catalog\Api\Data\ProductLinkInterface::class);
 
-            $associated[] = $productLink;
+                $productLink->setSku($product->getSku())
+                    ->setLinkType('associated')
+                    ->setLinkedProductSku($linkedProduct->getSku())
+                    ->setLinkedProductType($linkedProduct->getTypeId())
+                    ->setPosition($position)
+                    ->getExtensionAttributes()
+                    ->setQty(100);
+
+                $associated[] = $productLink;
+            }
         }
         $product->setProductLinks($associated);
 
         return $product;
+    }
+
+    private function replace_extension($filename, $new_extension) {
+        return substr_replace($filename , $new_extension, strrpos($filename , '.') +1);
+    }
+
+    private function copyMedia($oldProduct) {
+        $product = $this->productRepository->get('branded-casual-set');
+        $oldProductMedia = $oldProduct->getMediaGalleryEntries();
+        $newProductMedia = $product->getMediaGalleryEntries();
+
+        foreach($newProductMedia as $key => $galleryEntry){
+            if (isset($oldProductMedia[$key])) {
+                $thisFile = $oldProductMedia[$key]->getFile();
+                $thatFile = $galleryEntry->getFile();
+
+                try {
+                    $this->mediaDirectory->copyFile(
+                        'jpg/catalog/product' . $thisFile,
+                        'jpg/catalog/product' . $thatFile
+                    );
+                    $this->mediaDirectory->copyFile(
+                        'webp/catalog/product' . $this->replace_extension($thisFile, 'webp'),
+                        'webp/catalog/product' . $this->replace_extension($thatFile, 'webp')
+                    );
+                    $this->mediaDirectory->copyFile(
+                        'svg/catalog/product' . $this->replace_extension($thisFile, 'svg'),
+                        'svg/catalog/product' . $this->replace_extension($thatFile, 'svg')
+                    );
+                }catch(\Exception $e)
+                {
+                    echo 'Caught exception: ',  $e->getMessage(), "\n";
+                }
+            } else {
+                unset($newProductMedia[$key]);
+            }
+        }
+
+        $product->setMediaGalleryEntries($newProductMedia);
+
+        try {
+            $this->productRepository->save($product);
+        }catch(\Exception $e)
+        {
+            echo 'Caught exception: ',  $e->getMessage(), "\n";
+        }
     }
 
     public function revert()
