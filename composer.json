@@ -2,7 +2,6 @@
     "name": "scandipwa/migrations",
     "type": "magento2-theme",
     "description": "ScandiPWA migrations module",
-    "version": "0.0.1",
     "keywords": [
         "magento2",
         "theme",
