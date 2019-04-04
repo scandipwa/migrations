@@ -101,7 +101,9 @@ class AddGroupedProduct implements DataPatchInterface, PatchRevertableInterface
      */
     public function apply()
     {
-        $this->appState->setAreaCode('adminhtml');
+        if (!$this->appState->getAreaCode()) {
+            $this->appState->setAreaCode('adminhtml');
+        }
         $this->moduleDataSetup->getConnection()->startSetup();
         
         try {
