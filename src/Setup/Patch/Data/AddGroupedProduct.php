@@ -20,6 +20,7 @@ use Magento\Catalog\Model\Product\Copier;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Framework\App\ObjectManager;
 use Magento\Framework\App\State;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Filesystem;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
@@ -101,9 +102,12 @@ class AddGroupedProduct implements DataPatchInterface, PatchRevertableInterface
      */
     public function apply()
     {
-        if (!$this->appState->getAreaCode()) {
+        try {
+            $this->appState->getAreaCode();
+        } catch (LocalizedException $e) {
             $this->appState->setAreaCode('adminhtml');
         }
+
         $this->moduleDataSetup->getConnection()->startSetup();
         
         try {
